@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html><head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Your site description">
+    
+    <link rel="shortcut icon" href="https://mdeliu.github.io/favicon.ico">
+    
+    <link rel="stylesheet" href="/css/style.min.css">
+
+    <title>Hugo Crashkurs</title>
+</head>
+<body><header id="banner">
+    <h2><a href="https://mdeliu.github.io">mdeliu.github.io</a></h2>
+    <nav>
+        <ul>
+            
+        </ul>
+    </nav>
+</header>
+<main id="content">
+<article>
+    <header id="post-header">
+        <h1>Hugo Crashkurs</h1>
+            <div>
+                <time>01.05.2020</time>
+                </div>
+    </header><p>Unter Windows 10 kann der statische Seitengenerator <code>Hugo</code> über den <a href="https://chocolatey.org/install">Chocolatey Packetmanager</a> installiert werden und ist meiner Meinung nach ohnehin ein erstklassiger Paketmanager abseits der *nix Welt.</p>
+<p>Dazu einfach Powershell mit Adminrechten (wichtig) starten und über folgenden Befehl Chocolatey installieren:</p>
+<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash">Set-ExecutionPolicy Bypass -Scope Process -Force<span class="p">;</span> <span class="o">[</span>System.Net.ServicePointManager<span class="o">]</span>::SecurityProtocol <span class="o">=</span> <span class="o">[</span>System.Net.ServicePointManager<span class="o">]</span>::SecurityProtocol -bor 3072<span class="p">;</span> iex <span class="o">((</span>New-Object System.Net.WebClient<span class="o">)</span>.DownloadString<span class="o">(</span><span class="s1">&#39;https://chocolatey.org/install.ps1&#39;</span><span class="o">))</span>
+</code></pre></div><p>Anschließend wird Hugo über folgenden Befehl installiert:</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="n">choco</span> <span class="n">install</span> <span class="n">hugo</span> <span class="n">-confirm</span>
+</code></pre></div><p>Unter Arch Linux ist eine Hugo Seite genauso schnell eingerichtet. Ich gehe davon aus, dass Pakete aus dem <a href="https://aur.archlinux.org/">AUR</a> über <code>yay</code> bezogen und installiert werden.</p>
+<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash">yay -S hugo-git
+</code></pre></div><p>Anschließend kann man sich seine erste Seite erstellen. Dafür eine neue Hugo Seite erstellen und in das gewünschte Verzeichnis wechseln:</p>
+<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash">hugo new site Beispielseite
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash"><span class="nb">cd</span> Beispielseite
+</code></pre></div><p>Das erste Theme (hier &ldquo;Ananke&rdquo;) herunterladen und installieren (<code>git</code> muss installiert sein):</p>
+<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash">git init
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash">git submodule add https://github.com/budparr/gohugo-theme-ananke.git themes/ananke
+</code></pre></div><p>Alternativ kann man sich die Themes auch direkt herunterladen und im Websitepfad entpacken bzw. reinkopieren.</p>
+<p>Die <code>config.taml</code> öffnen und folgende Zeile hinzufügen bzw. editieren:</p>
+<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash">nano config.taml
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash"><span class="nv">theme</span> <span class="o">=</span> <span class="s2">&#34;ananke&#34;</span>
+</code></pre></div><ul>
+<li>je nach Theme sollte noch die Domain, Titel, Beschreibung und diverse Parameter in der Config festgelegt werden</li>
+<li>Posts werden unter <code>Beispielseite\content\posts</code> als Markdown-File abgelegt</li>
+<li>gewöhnliche Seiten eine Ebene drüber</li>
+</ul>
+<p>Der erste Testlauf mit Live-Änderungen kann mit folgendem Befehl durchgeführt werden:</p>
+<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash">hugo server -D
+</code></pre></div><p>Die URL wird direkt im Terminal ausgegeben. In der Regel <code>localhost:1313</code>, sofern kein weiterer Hugo Server läuft.</p>
+<p>Über folgenden Befehl wird ein neuer Ordner <code>public</code> erzeugt:</p>
+<div class="highlight"><pre class="chroma"><code class="language-bash" data-lang="bash">hugo -D
+</code></pre></div><p>Hier liegen alle statischen HTML-Seiten inkl. CSS, Themes und JavaScript-Files (sofern vorhanden). Diesen Inhalt direkt auf dem Webspace hochladen.</p>
+<p>Näheres in der sehr guten <a href="https://gohugo.io/documentation/">Hugo Doc</a>.</p></article>
+
+        </main><footer id="footer">
+   	Erstellt von Musano Deliu | 
+	<a href="https://mdeliu.github.io/impressum.html">Impressum &amp; Datenschutz</a>
+</footer>
+</footer>
+</body>
+</html>

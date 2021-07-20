@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html><head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Your site description">
+    
+    <link rel="shortcut icon" href="https://mdeliu.github.io/favicon.ico">
+    
+    <link rel="stylesheet" href="/css/style.min.css">
+
+    <title>Windows Server Core 2019 als AD DC und DNS-Server</title>
+</head>
+<body><header id="banner">
+    <h2><a href="https://mdeliu.github.io">mdeliu.github.io</a></h2>
+    <nav>
+        <ul>
+            
+        </ul>
+    </nav>
+</header>
+<main id="content">
+<article>
+    <header id="post-header">
+        <h1>Windows Server Core 2019 als AD DC und DNS-Server</h1>
+            <div>
+                <time>03.05.2020</time>
+                </div>
+    </header><p>Ich brauche für Versuche über Powershell immer wieder mal einen Windows Client in einem AD. Dabei finde ich die Installation einer großen Windows Server Variante mit der Desktop Experience eigentlich zu aufgebläht und wollte auf die Core-Variante ausweichen.</p>
+<h1 id="basiskonfiguration">Basiskonfiguration</h1>
+<p>In meinem Beispiel installiere ich die Windows Server 2019 Standard ISO auf einer Linux Maschine mit <code>kvm</code> und <code>virt-manager</code> als Hypervisor.
+Die virtuelle Maschine ist per Bridge in meinem Netzwerk angebunden, in unten genannten Beispiel nehme ich den typischen Heimnetzwerk IP-Adressbereich <code>192.168.178.0/24</code> zur Veranschaulichung.
+Ein DHCP-Server ist nicht im Einsatz, daher arbeite ich hier mit festen IP-Adressen.</p>
+<p>Windows Server 2019 installieren, dabei die &ldquo;Core&rdquo; Variante auswählen. Anschließend über <code>sconfig</code> nach der Installation die gewünschten Einstellungen vornehmen:</p>
+<ul>
+<li>Name</li>
+<li>Einstellungen der Updates</li>
+<li>Telemetry (Empfehlung: &ldquo;Security&rdquo;)</li>
+<li>Network Settings (hier: statische IP)</li>
+<li>Remote Desktop aktivieren</li>
+<li>etc.</li>
+</ul>
+<p>Punkt <code>15. Exit</code> auswählen und <code>powershell</code> über die Eingabeaufforderung aufrufen.</p>
+<h1 id="primären-domain-controller-anlegen">Primären Domain Controller anlegen</h1>
+<p>AD Domain Services installieren:</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">Install-WindowsFeature</span> <span class="nb">AD-Domain</span><span class="n">-Services</span> <span class="n">-IncludeManagementTools</span>
+</code></pre></div><p>Forest erstellen:</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">Install-ADDSForest</span> <span class="n">-DomainName</span> <span class="n">homelab</span><span class="p">.</span><span class="n">int</span>
+</code></pre></div><p>(Optional) Pfade anpassen:</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">Install-ADDSForest</span> <span class="n">-DomainName</span> <span class="n">homelab</span><span class="p">.</span><span class="n">int</span> <span class="n">-DatabasePath</span> <span class="s2">&#34;E:\AD\DB&#34;</span> <span class="n">-LogPath</span> <span class="s2">&#34;E:\AD\Log&#34;</span> <span class="n">-SysvolPath</span> <span class="s2">&#34;E:\AD\SYSVOL&#34;</span>
+</code></pre></div><p>Server rebooten.</p>
+<h1 id="dns-zonen-konfigurieren">DNS Zonen konfigurieren</h1>
+<p>Checken, ob die DNS Rolle installiert ist (sollte sie):</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">Get-WindowsFeature</span> <span class="p">|</span> <span class="nb">where </span><span class="p">{(</span><span class="nv">$_</span><span class="p">.</span><span class="n">name</span> <span class="o">-like</span> <span class="err">“</span><span class="n">DNS</span><span class="err">”</span><span class="p">)}</span>
+</code></pre></div><p>Falls nicht, die DNS Rolle nachinstallieren:</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">Install-WindowsFeature</span> <span class="n">DNS</span> <span class="n">-IncludeManagementTools</span>
+</code></pre></div><p>Die primäre DNS Zone sollte bereits beim Anlegen des Forest für den DC generiert sein. Es muss nun die Netzwerk-ID und die zugehörige Datei ergänzt werden:</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">Add-DnsServerPrimaryZone</span> <span class="n">-NetworkID</span> <span class="n">192</span><span class="p">.</span><span class="n">168</span><span class="p">.</span><span class="n">178</span><span class="p">.</span><span class="n">0</span><span class="p">/</span><span class="n">24</span> <span class="n">-ZoneFile</span> <span class="err">“</span><span class="n">192</span><span class="p">.</span><span class="n">168</span><span class="p">.</span><span class="n">178</span><span class="p">.</span><span class="n">102</span><span class="p">.</span><span class="nb">in-addr</span><span class="p">.</span><span class="n">arpa</span><span class="p">.</span><span class="n">dns</span><span class="err">”</span>
+</code></pre></div><p><strong>Kurze Erklärung:</strong></p>
+<ul>
+<li><code>-NetworkID</code> bezieht sich auf die entsprechende Netzadresse</li>
+<li><code>-ZoneFile</code> auf die Server-IP (dieser hier)</li>
+<li>die Werte müssen je nach Netzwerk angepasst werden</li>
+</ul>
+<p>Anschließend den Forwarder hinzufügen:</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">Add-DnsServerForwarder</span> <span class="n">-IPAddress</span> <span class="n">192</span><span class="p">.</span><span class="n">168</span><span class="p">.</span><span class="n">178</span><span class="p">.</span><span class="n">1</span> <span class="n">-PassThru</span>
+</code></pre></div><p>Der Forwarder ist in meinem Beispiel der lokale Router, der auch als DNS Forwarder fungiert und Anfragen, die der Windows DNS Server nicht kennt, weiterleitet. Hier kann man auch einen öffentlichen DNS Server wie <code>1.1.1.1</code> oder <code>8.8.8.8</code> nehmen.<br>
+Wichtig, falls der Windows 10 Client mit dem Internet kommunizieren soll.</p>
+<h1 id="firewall">Firewall</h1>
+<p>Ich schalte die Windows Domain-Firewall ab, da ich sie nicht benötige und bereits eine pfSense im Einsatz ist. Das ganze sollte man nach Anwendungs- und Sicherheitsszenario abwägen und ist keine generelle Empfehlung.</p>
+<p>Firewalls Status checken:</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">Get-NetFirewallProfile</span>
+</code></pre></div><p>Domain-Firewall Ausschalten:</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">Set-NetFirewallProfile</span> <span class="n">-Profile</span> <span class="n">Domain</span> <span class="n">-Enabled</span> <span class="n">false</span>
+</code></pre></div><h1 id="ad-benutzer-hinzufügen">AD Benutzer hinzufügen</h1>
+<p>Das lässt sich beispielsweise über Powershell Mithilfe von <a href="https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_splatting?view=powershell-7">Splatting</a> erledigen.</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nv">$Attributes</span> <span class="p">=</span> <span class="p">@{</span>
+   <span class="n">Enabled</span> <span class="p">=</span> <span class="nv">$true</span>
+   <span class="n">UserPrincipalName</span> <span class="p">=</span> <span class="s2">&#34;test@homelab.int&#34;</span>
+   <span class="n">Name</span> <span class="p">=</span> <span class="s2">&#34;Max.Mustermann&#34;</span>
+   <span class="n">GivenName</span> <span class="p">=</span> <span class="s2">&#34;Max&#34;</span>
+   <span class="n">Surname</span> <span class="p">=</span> <span class="s2">&#34;Mustermann&#34;</span>
+   <span class="n">DisplayName</span> <span class="p">=</span> <span class="s2">&#34;Max Mustermann&#34;</span>
+   <span class="n">AccountPassword</span> <span class="p">=</span> <span class="s2">&#34;MusterPasswort123&#34;</span> <span class="p">|</span> <span class="nb">ConvertTo-SecureString</span> <span class="n">-AsPlainText</span> <span class="n">-Force</span>
+<span class="p">}</span>
+
+<span class="nb">New-ADUser</span> <span class="nv">@Attributes</span>
+</code></pre></div><p>Es gibt noch einige mehr Attribute, für meinen Test benötige ich jedoch nur die oben genannten. Die Liste der Attribute kann man direkt in Powershell über</p>
+<div class="highlight"><pre class="chroma"><code class="language-powershell" data-lang="powershell"><span class="nb">New-ADUser</span> <span class="p">-</span>
+</code></pre></div><p>(mit dem Bindestirch am Ende) sowie Steuerung + Leertaste in Erfahrung bringen.<br>
+Siehe auch: <a href="https://docs.microsoft.com/en-us/powershell/module/addsadministration/new-aduser?view=win10-ps">Microsoft Docs</a>.</p>
+<h1 id="domain-join">Domain Join</h1>
+<p>Dem Windows 10 Client vergibt man eine statische IP aus dem Adressbereich, sofern kein DHCP-Server die Aufgabe übernimmt (in diesem Beispiel nicht).<br>
+Als DNS-Server wird der soeben eingerichtete Server eingetragen.</p>
+</article>
+
+        </main><footer id="footer">
+   	Erstellt von Musano Deliu | 
+	<a href="https://mdeliu.github.io/impressum.html">Impressum &amp; Datenschutz</a>
+</footer>
+</footer>
+</body>
+</html>
